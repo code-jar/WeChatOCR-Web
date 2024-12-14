@@ -4,12 +4,13 @@ import os
 from flask import Flask, request, jsonify
 from werkzeug.datastructures.file_storage import FileStorage
 import uuid
+from gevent import pywsgi
 
 # 创建 Flask 应用
 app = Flask(__name__)
 
 # 设置图片保存目录
-UPLOAD_FOLDER = os.path.dirname(os.path.abspath(__file__)) + "/img"
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img")
 
 # 设置允许上传的文件类型
 ALLOWED_EXTENSIONS = ("jpg", "jpeg", "png", "bmp", "tif")
@@ -98,10 +99,18 @@ def upload_image():
     # 返回上传成功信息
     return jsonify({"code": 200, "msg": "上传成功", "data": texts})
 
+
 # 释放
 atexit.register(wcocr.destroy)
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+#     wechat_ocr_init()
+#     # 设置端口
+#     app.run(host="0.0.0.0", port=5001)
+
+if __name__ == '__main__':
     wechat_ocr_init()
-    # 设置端口
-    app.run(host="0.0.0.0", port=5001)
+    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app)  
+    server.serve_forever()
+    server0 = pywsgi.WSGIServer(('0.0.0.0', 5000), app)  
+    server0.serve_forever()
