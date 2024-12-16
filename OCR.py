@@ -1,6 +1,7 @@
 import atexit
 import wcocr
 import os
+import sys
 from flask import Flask, request, jsonify
 from werkzeug.datastructures.file_storage import FileStorage
 import uuid
@@ -9,11 +10,18 @@ from gevent import pywsgi
 # 创建 Flask 应用
 app = Flask(__name__)
 
-# 设置图片保存目录
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img")
-
 # 设置允许上传的文件类型
 ALLOWED_EXTENSIONS = ("jpg", "jpeg", "png", "bmp", "tif")
+
+
+def get_save_dir() -> str:
+    # 图片保存目录
+    if getattr(sys, "frozen", False):
+        # 如果是打包后的可执行文件
+        return os.path.join(os.path.dirname(sys.executable), "img")
+    else:
+        # 如果是脚本运行
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "img")
 
 
 def find_wechat_path():
@@ -68,11 +76,13 @@ def save_file(file: FileStorage) -> str:
     # 生成唯一文件名
     new_filename = uuid.uuid4().hex + "." + file.filename.split(".")[-1]
 
-    # 保存图片
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.mkdir(UPLOAD_FOLDER)
+    save_dir = get_save_dir()
 
-    file_path = os.path.join(UPLOAD_FOLDER, new_filename)
+    # 保存图片
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+
+    file_path = os.path.join(save_dir, new_filename)
     file.save(file_path)
 
     return file_path
@@ -108,9 +118,11 @@ atexit.register(wcocr.destroy)
 #     # 设置端口
 #     app.run(host="0.0.0.0", port=5001)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     wechat_ocr_init()
-    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app)  
+    print("start listen 127.0.0.1:5000 0.0.0.0:5000")
+    print("example : POST 127.0.0.1:5000/upload_ocr")
+    server = pywsgi.WSGIServer(("127.0.0.1", 5000), app)
     server.serve_forever()
-    server0 = pywsgi.WSGIServer(('0.0.0.0', 5000), app)  
+    server0 = pywsgi.WSGIServer(("0.0.0.0", 5000), app)
     server0.serve_forever()
